@@ -1,0 +1,16 @@
+@use 'sass:math'
+@use '../variables/_index' as var
+
+@mixin pt-vw($value)
+  padding-top: #{ math.div(math.floor(math.div($value, var.$layout-base-sp) * 10000), 100) }vw
+@mixin pb-vw($value)
+  padding-bottom: #{ math.div(math.floor(math.div($value, var.$layout-base-sp) * 10000), 100) }vw
+@mixin pl-vw($value)
+  padding-left: #{ math.div(math.floor(math.div($value, var.$layout-base-sp) * 10000), 100) }vw
+@mixin pr-vw($value)
+  padding-right: #{ math.div(math.floor(math.div($value, var.$layout-base-sp) * 10000), 100) }vw
+@mixin p-vw($top, $right, $bottom, $left)
+  @include pt-vw($top)
+  @include pb-vw($bottom)
+  @include pl-vw($left)
+  @include pr-vw($right)

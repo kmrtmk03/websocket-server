@@ -1,0 +1,15 @@
+@use 'sass:map'
+
+$breakpoints: (sp: 768px)
+
+@mixin mq-sp($breakpoint: sp)
+  @media (max-width: #{map.get($breakpoints, $breakpoint)})
+    @content
+
+@mixin mq-pc($breakpoint: sp)
+  @media (min-width: #{map.get($breakpoints, $breakpoint) + 1})
+    @content
+
+@mixin mq-custom($breakpoint)
+  @media (max-width: $breakpoint + px)
+    @content

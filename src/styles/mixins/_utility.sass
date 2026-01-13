@@ -1,0 +1,26 @@
+@mixin hover()
+  @media (hover: hover)
+    &:hover
+      cursor: pointer
+      @content
+
+@mixin flex-center()
+  display: flex
+  justify-content: center
+  align-items: center
+
+@mixin flex-between()
+  display: flex
+  justify-content: space-between
+  align-items: center
+
+@mixin absolute-center()
+  position: absolute
+  top: 50%
+  left: 50%
+  transform: translate(-50%, -50%)
+
+@mixin text-ellipsis()
+  overflow: hidden
+  white-space: nowrap
+  text-overflow: ellipsis

@@ -1,0 +1,5 @@
+@use 'sass:math'
+@use '../variables/_index' as var
+
+@mixin bg-size-vw($width, $height)
+  background-size: #{ math.div(math.floor(math.div($width, var.$layout-base-sp) * 10000), 100) }vw #{ math.div(math.floor(math.div($height, var.$layout-base-sp) * 10000), 100) }vw

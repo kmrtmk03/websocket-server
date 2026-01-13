@@ -1,0 +1,16 @@
+@use 'sass:math'
+@use '../variables/_index' as var
+
+@mixin mt-vw($value)
+  margin-top: #{ math.div(math.floor(math.div($value, var.$layout-base-sp) * 10000), 100) }vw
+@mixin mb-vw($value)
+  margin-bottom: #{ math.div(math.floor(math.div($value, var.$layout-base-sp) * 10000), 100) }vw
+@mixin ml-vw($value)
+  margin-left: #{ math.div(math.floor(math.div($value, var.$layout-base-sp) * 10000), 100) }vw
+@mixin mr-vw($value)
+  margin-right: #{ math.div(math.floor(math.div($value, var.$layout-base-sp) * 10000), 100) }vw
+@mixin m-vw($top, $right, $bottom, $left)
+  @include mt-vw($top)
+  @include mb-vw($bottom)
+  @include ml-vw($left)
+  @include mr-vw($right)

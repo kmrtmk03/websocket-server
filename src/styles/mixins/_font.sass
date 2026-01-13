@@ -1,0 +1,7 @@
+@use 'sass:math'
+@use '../variables/_index' as var
+
+@mixin fz-vw($value)
+  font-size: #{ math.div(math.floor(math.div($value, var.$layout-base-sp) * 10000), 100) }vw
+@mixin lh-vw($value)
+  line-height: #{ math.div(math.floor(math.div($value, var.$layout-base-sp) * 10000), 100) }vw

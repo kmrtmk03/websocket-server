@@ -1,0 +1,24 @@
+@use 'sass:math'
+@use '../variables/_index' as var
+
+@mixin w-full()
+  width: 100vw
+@mixin h-full()
+  height: 100vh
+@mixin size-full()
+  width: 100vw
+  height: 100vh
+
+@mixin w-vw($value)
+  width: #{ math.div(math.floor(math.div($value, var.$layout-base-sp) * 10000), 100) }vw
+@mixin h-vw($value)
+  height: #{ math.div(math.floor(math.div($value, var.$layout-base-sp) * 10000), 100) }vw
+@mixin size-vw($size)
+  @include w-vw($size)
+  @include h-vw($size)
+
+@mixin aspect-ratio($width, $height)
+  &::before
+    content: ""
+    display: block
+    padding-top: math.div($height, $width) * 100%

@@ -1,0 +1,11 @@
+@use 'sass:math'
+@use '../variables/_index' as var
+
+@mixin top-vw($value)
+  top: #{ math.div(math.floor(math.div($value, var.$layout-base-sp) * 10000), 100) }vw
+@mixin bottom-vw($value)
+  bottom: #{ math.div(math.floor(math.div($value, var.$layout-base-sp) * 10000), 100) }vw
+@mixin left-vw($value)
+  left: #{ math.div(math.floor(math.div($value, var.$layout-base-sp) * 10000), 100) }vw
+@mixin right-vw($value)
+  right: #{ math.div(math.floor(math.div($value, var.$layout-base-sp) * 10000), 100) }vw
