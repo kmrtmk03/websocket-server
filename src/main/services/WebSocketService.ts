@@ -8,6 +8,9 @@
 
 import { WebSocketServer } from 'ws'
 import { BrowserWindow } from 'electron'
+import * as https from 'https'
+import * as fs from 'fs'
+import * as path from 'path'
 
 /**
  * WebSocket経由で受信するOSC転送用メッセージのインターフェース
@@ -29,13 +32,14 @@ interface OscTransferMessage {
  * WebSocketサーバーを管理するサービスクラス
  * 
  * 役割:
- * 1. ローカルWebSocketサーバーの起動・停止
+ * 1. ローカルWebSocketサーバーの起動・停止 (SSL対応)
  * 2. 外部アプリからのJSONメッセージ受信
  * 3. メインプロセスへのコールバック通知 (OSC転送用)
  * 4. レンダラープロセスへのログ送信
  */
 export class WebSocketService {
   private wss: WebSocketServer | null = null
+  private httpsServer: https.Server | null = null
   private port: number
   private mainWindow: BrowserWindow | null = null
   private onMessageCallback: ((message: OscTransferMessage) => void) | null = null
@@ -66,6 +70,9 @@ export class WebSocketService {
 
   /**
    * WebSocketサーバーを起動します
+   * - certsディレクトリに証明書(cert.pem, key.pem)があればWSSとして起動します
+   * - 証明書がない場合はWSとして起動しようとしますが、今回はWSS化がメインのためログ出力します
+   * 
    * 既に起動している場合は再起動します
    * @param port ポート番号（指定がなければ現在の設定を使用）
    */
@@ -79,8 +86,37 @@ export class WebSocketService {
     }
 
     try {
-      this.wss = new WebSocketServer({ port: this.port })
-      console.log(`[WebSocket] サーバー起動: port ${this.port}`)
+      const certPath = path.join(process.cwd(), 'certs', 'cert.pem')
+      const keyPath = path.join(process.cwd(), 'certs', 'key.pem')
+
+      let serverOpts: any = {}
+
+      // 証明書の存在確認
+      if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+        console.log('[WebSocket] SSL証明書を検出しました。WSS (Secure) モードで起動します。')
+        this.log('SSL証明書検出: Secure Mode (WSS)')
+
+        const server = https.createServer({
+          cert: fs.readFileSync(certPath),
+          key: fs.readFileSync(keyPath)
+        })
+
+        this.httpsServer = server
+
+        server.listen(this.port, () => {
+          console.log(`[WebSocket] HTTPSサーバー起動: port ${this.port}`)
+        })
+
+        serverOpts = { server }
+      } else {
+        console.warn('[WebSocket] SSL証明書が見つかりません。通常のWSモードで起動します。')
+        this.log('SSL証明書なし: Normal Mode (WS)')
+        serverOpts = { port: this.port }
+      }
+
+      this.wss = new WebSocketServer(serverOpts)
+
+      console.log(`[WebSocket] WebSocketサーバー起動: port ${this.port}`)
       this.log(`サーバー起動: port ${this.port}`)
 
       this.wss.on('connection', (ws) => {
@@ -147,9 +183,15 @@ export class WebSocketService {
     if (this.wss) {
       this.wss.close()
       this.wss = null
-      console.log('[WebSocket] サーバー停止')
-      this.log('サーバー停止')
     }
+
+    if (this.httpsServer) {
+      this.httpsServer.close()
+      this.httpsServer = null
+    }
+
+    console.log('[WebSocket] サーバー停止')
+    this.log('サーバー停止')
   }
 
   /**
