@@ -24,14 +24,18 @@ wsService.onMessage(async (data) => {
 
     if (address.startsWith('/app1')) {
       // /app1... -> App1 (Port 9000) へ送信
-      console.log(`[Bridge] App1へ転送: ${address}`)
-      await oscService1.send(address, ...args)
+      // プレフィックスを削除して送信 (例: /app1/scene -> /scene)
+      const oscAddress = address.replace('/app1', '')
+      console.log(`[Bridge] App1へ転送: ${address} -> ${oscAddress}`)
+      await oscService1.send(oscAddress, ...args)
     } else if (address.startsWith('/app2')) {
       // /app2... -> App2 (Port 10000) へ送信
-      console.log(`[Bridge] App2へ転送: ${address}`)
-      await oscService2.send(address, ...args)
+      // プレフィックスを削除して送信 (例: /app2/scene -> /scene)
+      const oscAddress = address.replace('/app2', '')
+      console.log(`[Bridge] App2へ転送: ${address} -> ${oscAddress}`)
+      await oscService2.send(oscAddress, ...args)
     } else {
-      // デフォルト: App1へ送信 (またはログ出力のみにするか要検討)
+      // デフォルト: App1へ送信（プレフィックスなしの場合はそのまま）
       console.log(`[Bridge] デフォルト(App1)へ転送: ${address}`)
       await oscService1.send(address, ...args)
     }
