@@ -1,32 +1,14 @@
 import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
-import { Client as OscClient } from 'node-osc'
+import { OscService } from './services/OscService'
 
-// OSC設定
-const OSC_HOST = '127.0.0.1'
-let oscPort = 9000
-
-// OSCクライアントを作成
-let oscClient = new OscClient(OSC_HOST, oscPort)
+// OSCサービスのインスタンス化
+// ホスト: 127.0.0.1, ポート: 9000 (初期値)
+const oscService = new OscService('127.0.0.1', 9000)
 
 // メインウィンドウの参照を保持
 let mainWindow: BrowserWindow | null = null
-
-/**
- * OSCメッセージを送信する
- * @param address OSCアドレス（例: /scene/1）
- * @param args 送信する引数（オプション）
- */
-function sendOscMessage(address: string, ...args: (string | number)[]): void {
-  oscClient.send(address, ...args, (err: Error | null) => {
-    if (err) {
-      console.error('OSC送信エラー:', err)
-    } else {
-      console.log(`OSC送信成功: ${address}`, args)
-    }
-  })
-}
 
 /**
  * メインウィンドウを作成する
@@ -62,28 +44,22 @@ function createWindow(): void {
   }
 }
 
-// IPCハンドラー: OSCメッセージ送信
-ipcMain.handle('osc:send', (_event, address: string, ...args: (string | number)[]) => {
-  sendOscMessage(address, ...args)
-  return { success: true, address, args }
+// IPCハンドラー登録：OSCメッセージ送信
+ipcMain.handle('osc:send', async (_event, address: string, ...args: (string | number)[]) => {
+  try {
+    await oscService.send(address, ...args)
+    return { success: true, address, args }
+  } catch (error) {
+    return { success: false, error }
+  }
 })
 
-// IPCハンドラー: ポート番号変更
+// IPCハンドラー登録：ポート番号変更
 ipcMain.handle('osc:set-port', (_event, port: number) => {
-  if (port === oscPort) return { success: true, port }
-
   try {
-    // 古いクライアントを閉じる
-    oscClient.close()
-
-    // 新しいポートで再作成
-    oscPort = port
-    oscClient = new OscClient(OSC_HOST, oscPort)
-
-    console.log(`OSCポートを変更しました: ${port}`)
+    oscService.setPort(port)
     return { success: true, port }
   } catch (error) {
-    console.error('OSCポート変更エラー:', error)
     return { success: false, error }
   }
 })
@@ -107,7 +83,7 @@ app.on('window-all-closed', () => {
   }
 })
 
-// アプリ終了時にOSCクライアントをクローズ
+// アプリ終了時にOSCサービスを終了
 app.on('will-quit', () => {
-  oscClient.close()
+  oscService.close()
 })
