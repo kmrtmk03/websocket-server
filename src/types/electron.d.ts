@@ -1,50 +1,71 @@
-// OSC送信先のターゲット識別子
-export type OscTarget = 'app1' | 'app2'
+/**
+ * Electron API型定義
+ * 
+ * プリロードスクリプトで `contextBridge.exposeInMainWorld` により
+ * 公開されたAPIの型定義です。
+ */
 
-// Electron APIの型定義
-// プリロードスクリプトでexposeInMainWorldしたAPIの型
+import type { OscTarget, OscSendResult, PortChangeResult } from './osc'
 
+/**
+ * レンダラープロセスからアクセス可能なElectron API
+ */
 export interface ElectronAPI {
-  // プラットフォーム情報
+  // =========================================================================
+  // システム情報
+  // =========================================================================
+
+  /** 実行プラットフォーム */
   platform: NodeJS.Platform
 
-  // バージョン情報
+  /** バージョン情報 */
   versions: {
     node: string
     chrome: string
     electron: string
   }
 
-  // OSCメッセージを送信 (target指定追加)
-  sendOsc: (address: string, args: (string | number)[], target?: OscTarget) => Promise<{
-    success: boolean
-    address: string
-    args: (string | number)[]
-    target: OscTarget
-  }>
+  // =========================================================================
+  // OSC操作
+  // =========================================================================
 
-  // OSCポートを変更 (target指定追加)
-  setPort: (port: number, target: OscTarget) => Promise<{
-    success: boolean
-    port?: number
-    target?: OscTarget
-    error?: unknown
-  }>
+  /**
+   * OSCメッセージを送信
+   * @param address OSCアドレス（例: /scene）
+   * @param args 引数の配列
+   * @param target 送信先ターゲット（省略時: app1）
+   */
+  sendOsc: (address: string, args: (string | number)[], target?: OscTarget) => Promise<OscSendResult>
 
-  // WebSocketポートを変更
-  setWsPort: (port: number) => Promise<{
-    success: boolean
-    port?: number
-    error?: unknown
-  }>
+  /**
+   * OSCポートを変更
+   * @param port 新しいポート番号
+   * @param target 対象ターゲット
+   */
+  setPort: (port: number, target: OscTarget) => Promise<PortChangeResult>
 
-  // WebSocketログを受信
+  // =========================================================================
+  // WebSocket操作
+  // =========================================================================
+
+  /**
+   * WebSocketサーバーのポートを変更
+   * @param port 新しいポート番号
+   */
+  setWsPort: (port: number) => Promise<PortChangeResult>
+
+  /**
+   * WebSocketログを受信するリスナーを登録
+   * @param callback ログメッセージを受け取るコールバック
+   */
   onWsLog: (callback: (message: string) => void) => void
 }
 
-// グローバルwindowオブジェクトにelectronAPIを追加
+/**
+ * グローバルwindowオブジェクトの型拡張
+ */
 declare global {
   interface Window {
-    electronAPI: ElectronAPI
+    electronAPI?: ElectronAPI
   }
 }

@@ -1,37 +1,94 @@
+/**
+ * Electronメインプロセス
+ * 
+ * このファイルはElectronアプリケーションのエントリーポイントです。
+ * 
+ * 主な役割:
+ * 1. OSCサービスの初期化と管理（2系統: App1/App2）
+ * 2. WebSocketサーバーの初期化とOSCへのブリッジ
+ * 3. BrowserWindowの作成とライフサイクル管理
+ * 4. IPCハンドラーの登録（レンダラープロセスとの通信）
+ */
+
 import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { OscService } from './services/OscService'
 import { WebSocketService } from './services/WebSocketService'
 
-// --- サービス初期化 ---
+/**
+ * OSC送信先のターゲット識別子
+ */
+type OscTarget = 'app1' | 'app2'
 
-// OSCサービスのインスタンス化 (複数ターゲット)
-// App1: Port 9000
-const oscService1 = new OscService('127.0.0.1', 9000)
-// App2: Port 10000
-const oscService2 = new OscService('127.0.0.1', 10000)
+// =============================================================================
+// 定数定義（メインプロセス用）
+// =============================================================================
 
-// WebSocketサービスのインスタンス化
-// ポート: 8080 (初期値)
-const wsService = new WebSocketService(8080)
+/** OSC送信先ホスト（ローカルホスト） */
+const OSC_HOST = '127.0.0.1'
 
-// --- ブリッジロジック (WebSocket -> OSC) ---
-// WebSocketService側でバリデーション済みのメッセージを受け取る
+/** App1のデフォルトOSCポート */
+const DEFAULT_OSC_PORT_APP1 = 9000
+
+/** App2のデフォルトOSCポート */
+const DEFAULT_OSC_PORT_APP2 = 10000
+
+/** WebSocketサーバーのデフォルトポート */
+const DEFAULT_WS_PORT = 8080
+
+/** OSC振り分け用のアドレスプレフィックス */
+const APP_PREFIXES = {
+  app1: '/app1',
+  app2: '/app2'
+} as const
+
+// =============================================================================
+// サービス初期化
+// =============================================================================
+
+/**
+ * OSCサービスのインスタンス（複数ターゲット対応）
+ * - oscService1: App1向け（デフォルト: Port 9000）
+ * - oscService2: App2向け（デフォルト: Port 10000）
+ */
+const oscService1 = new OscService(OSC_HOST, DEFAULT_OSC_PORT_APP1)
+const oscService2 = new OscService(OSC_HOST, DEFAULT_OSC_PORT_APP2)
+
+/**
+ * WebSocketサーバーサービス
+ * 外部アプリからのJSONメッセージを受信し、OSCへ転送します
+ */
+const wsService = new WebSocketService(DEFAULT_WS_PORT)
+
+// =============================================================================
+// ブリッジロジック (WebSocket -> OSC)
+// =============================================================================
+
+/**
+ * WebSocketで受信したメッセージをOSCに転送するブリッジ処理
+ * 
+ * 振り分けルール:
+ * - アドレスが /app1 で始まる -> App1 (oscService1) へ送信
+ * - アドレスが /app2 で始まる -> App2 (oscService2) へ送信
+ * - それ以外 -> デフォルトでApp1へ送信
+ * 
+ * プレフィックス削除:
+ * - /app1/scene -> /scene として送信
+ * - /app2/scene -> /scene として送信
+ */
 wsService.onMessage(async (data) => {
   try {
     const { address, args } = data
 
-    if (address.startsWith('/app1')) {
-      // /app1... -> App1 (Port 9000) へ送信
-      // プレフィックスを削除して送信 (例: /app1/scene -> /scene)
-      const oscAddress = address.replace('/app1', '')
+    if (address.startsWith(APP_PREFIXES.app1)) {
+      // App1へ転送（プレフィックスを削除）
+      const oscAddress = address.replace(APP_PREFIXES.app1, '')
       console.log(`[Bridge] App1へ転送: ${address} -> ${oscAddress}`)
       await oscService1.send(oscAddress, ...args)
-    } else if (address.startsWith('/app2')) {
-      // /app2... -> App2 (Port 10000) へ送信
-      // プレフィックスを削除して送信 (例: /app2/scene -> /scene)
-      const oscAddress = address.replace('/app2', '')
+    } else if (address.startsWith(APP_PREFIXES.app2)) {
+      // App2へ転送（プレフィックスを削除）
+      const oscAddress = address.replace(APP_PREFIXES.app2, '')
       console.log(`[Bridge] App2へ転送: ${address} -> ${oscAddress}`)
       await oscService2.send(oscAddress, ...args)
     } else {
@@ -89,10 +146,20 @@ function createWindow(): void {
   }
 }
 
-// --- IPCハンドラー設定 ---
+// =============================================================================
+// IPCハンドラー設定
+// =============================================================================
 
-// IPCハンドラー登録：OSCメッセージ送信
-ipcMain.handle('osc:send', async (_event, address: string, args: (string | number)[], target: 'app1' | 'app2' = 'app1') => {
+/**
+ * OSCメッセージ送信ハンドラー
+ * 
+ * レンダラープロセスからの要求を受けて、指定されたターゲットにOSCメッセージを送信します。
+ * 
+ * @param address - OSCアドレス（例: /scene）
+ * @param args - 送信する引数の配列
+ * @param target - 送信先ターゲット（'app1' | 'app2'）
+ */
+ipcMain.handle('osc:send', async (_event, address: string, args: (string | number)[], target: OscTarget = 'app1') => {
   try {
     // ターゲットに応じて送信サービスを切り替え
     if (target === 'app2') {
@@ -106,8 +173,15 @@ ipcMain.handle('osc:send', async (_event, address: string, args: (string | numbe
   }
 })
 
-// IPCハンドラー登録：OSC送信ポート変更
-ipcMain.handle('osc:set-port', (_event, port: number, target: 'app1' | 'app2') => {
+/**
+ * OSCポート変更ハンドラー
+ * 
+ * 指定されたターゲットのOSC送信先ポートを変更します。
+ * 
+ * @param port - 新しいポート番号
+ * @param target - 対象ターゲット（'app1' | 'app2'）
+ */
+ipcMain.handle('osc:set-port', (_event, port: number, target: OscTarget) => {
   try {
     if (target === 'app2') {
       oscService2.setPort(port)
@@ -120,7 +194,13 @@ ipcMain.handle('osc:set-port', (_event, port: number, target: 'app1' | 'app2') =
   }
 })
 
-// IPCハンドラー登録：WebSocket受信ポート変更
+/**
+ * WebSocketポート変更ハンドラー
+ * 
+ * WebSocketサーバーの受信ポートを変更し、サーバーを再起動します。
+ * 
+ * @param port - 新しいポート番号
+ */
 ipcMain.handle('ws:set-port', (_event, port: number) => {
   try {
     wsService.start(port)

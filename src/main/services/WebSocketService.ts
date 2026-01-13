@@ -1,11 +1,27 @@
+/**
+ * WebSocketサーバーサービス
+ * 
+ * 外部アプリからのJSONメッセージを受信し、OSC転送用のコールバックを呼び出します。
+ * 
+ * @module WebSocketService
+ */
+
 import { WebSocketServer } from 'ws'
 import { BrowserWindow } from 'electron'
 
 /**
  * WebSocket経由で受信するOSC転送用メッセージのインターフェース
+ * 
+ * @example
+ * {
+ *   address: "/app1/scene",
+ *   args: [1]
+ * }
  */
 interface OscTransferMessage {
+  /** OSCアドレス（例: /scene, /app1/scene） */
   address: string
+  /** OSCメッセージの引数 */
   args: (string | number)[]
 }
 

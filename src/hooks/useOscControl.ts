@@ -1,6 +1,9 @@
 import { useState } from 'react'
+import type { OscTarget } from '../types/osc'
+import { DEFAULT_OSC_PORT_APP1, DEFAULT_OSC_PORT_APP2 } from '../constants/config'
 
-export type OscTarget = 'app1' | 'app2'
+// OscTarget型を再エクスポート（他のコンポーネントから使用できるように）
+export type { OscTarget }
 
 /**
  * OSC制御のためのカスタムフック
@@ -8,12 +11,14 @@ export type OscTarget = 'app1' | 'app2'
  * 役割:
  * 1. レンダラープロセスからメインプロセスへのOSC送信要求
  * 2. 送信先ポート番号の状態管理 (App1, App2)
+ * 
+ * @returns OSC制御に必要な状態と関数
  */
 export const useOscControl = () => {
-  // App1 (Port 9000) の状態
-  const [port1, setPort1] = useState(9000)
-  // App2 (Port 10000) の状態
-  const [port2, setPort2] = useState(10000)
+  // App1のポート状態（デフォルト: 9000）
+  const [port1, setPort1] = useState(DEFAULT_OSC_PORT_APP1)
+  // App2のポート状態（デフォルト: 10000）
+  const [port2, setPort2] = useState(DEFAULT_OSC_PORT_APP2)
 
   /**
    * OSCメッセージをメインプロセス経由で送信します
