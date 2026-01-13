@@ -1,3 +1,6 @@
+// OSC送信先のターゲット識別子
+export type OscTarget = 'app1' | 'app2'
+
 // Electron APIの型定義
 // プリロードスクリプトでexposeInMainWorldしたAPIの型
 
@@ -12,17 +15,19 @@ export interface ElectronAPI {
     electron: string
   }
 
-  // OSCメッセージを送信
-  sendOsc: (address: string, ...args: (string | number)[]) => Promise<{
+  // OSCメッセージを送信 (target指定追加)
+  sendOsc: (address: string, args: (string | number)[], target?: OscTarget) => Promise<{
     success: boolean
     address: string
     args: (string | number)[]
+    target: OscTarget
   }>
 
-  // OSCポートを変更
-  setPort: (port: number) => Promise<{
+  // OSCポートを変更 (target指定追加)
+  setPort: (port: number, target: OscTarget) => Promise<{
     success: boolean
     port?: number
+    target?: OscTarget
     error?: unknown
   }>
 

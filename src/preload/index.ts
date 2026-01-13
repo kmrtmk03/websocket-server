@@ -13,13 +13,13 @@ const electronAPI = {
   },
 
   // OSCメッセージを送信
-  sendOsc: (address: string, ...args: (string | number)[]) => {
-    return ipcRenderer.invoke('osc:send', address, ...args)
+  sendOsc: (address: string, args: (string | number)[], target: 'app1' | 'app2' = 'app1') => {
+    return ipcRenderer.invoke('osc:send', address, args, target)
   },
 
   // OSCポートを変更
-  setPort: (port: number) => {
-    return ipcRenderer.invoke('osc:set-port', port)
+  setPort: (port: number, target: 'app1' | 'app2') => {
+    return ipcRenderer.invoke('osc:set-port', port, target)
   },
 
   // WebSocketポートを変更

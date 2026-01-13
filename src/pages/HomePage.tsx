@@ -12,7 +12,7 @@ import './HomePage.sass'
  */
 function HomePage(): ReactElement {
   // カスタムフックを使用してロジックを分離
-  const { port, setPort, handlePortChange, sendOsc } = useOscControl()
+  const { port1, setPort1, port2, setPort2, handlePortChange, sendOsc } = useOscControl()
   const { wsPort, setWsPort, handleWsPortChange, logs, clearLogs } = useWebSocketServer()
 
   return (
@@ -23,35 +23,68 @@ function HomePage(): ReactElement {
         {/* OSC 送信セクション */}
         <section className="section">
           <h2>OSC Sender</h2>
-          <p className="description">ボタンをクリックしてOSCメッセージを送信</p>
+          <p className="description">それぞれのポートへOSCメッセージを送信</p>
 
-          <div className="button-grid">
-            {[1, 2, 3, 4, 5, 6].map((num) => (
-              <button
-                key={num}
-                className="osc-button"
-                onClick={() => sendOsc(num)}
-              >
-                Scene {num}
-              </button>
-            ))}
+          {/* App1 コントロール */}
+          <div className="app-control">
+            <h3>App 1</h3>
+            <div className="settings">
+              <label>
+                Target Port:
+                <input
+                  type="number"
+                  value={port1}
+                  onChange={(e) => setPort1(Number(e.target.value))}
+                  onBlur={() => handlePortChange('app1')}
+                  onKeyDown={(e) => e.key === 'Enter' && handlePortChange('app1')}
+                />
+              </label>
+            </div>
+            <div className="button-grid">
+              {[1, 2, 3, 4, 5, 6].map((num) => (
+                <button
+                  key={num}
+                  className="osc-button"
+                  onClick={() => sendOsc(num, 'app1')}
+                >
+                  App1-{num}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="settings">
-            <label>
-              Target Port:
-              <input
-                type="number"
-                value={port}
-                onChange={(e) => setPort(Number(e.target.value))}
-                onBlur={handlePortChange}
-                onKeyDown={(e) => e.key === 'Enter' && handlePortChange()}
-              />
-            </label>
+          <div className="divider-h"></div>
+
+          {/* App2 コントロール */}
+          <div className="app-control">
+            <h3>App 2</h3>
+            <div className="settings">
+              <label>
+                Target Port:
+                <input
+                  type="number"
+                  value={port2}
+                  onChange={(e) => setPort2(Number(e.target.value))}
+                  onBlur={() => handlePortChange('app2')}
+                  onKeyDown={(e) => e.key === 'Enter' && handlePortChange('app2')}
+                />
+              </label>
+            </div>
+            <div className="button-grid">
+              {[1, 2, 3, 4, 5, 6].map((num) => (
+                <button
+                  key={num}
+                  className="osc-button app2"
+                  onClick={() => sendOsc(num, 'app2')}
+                >
+                  App2-{num}
+                </button>
+              ))}
+            </div>
           </div>
 
           <p className="info">
-            送信先: 127.0.0.1:{port} | 形式: /scene [番号]
+            形式: /scene [番号]
           </p>
         </section>
 

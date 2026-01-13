@@ -6,9 +6,11 @@ import { WebSocketService } from './services/WebSocketService'
 
 // --- サービス初期化 ---
 
-// OSCサービスのインスタンス化
-// ホスト: 127.0.0.1, ポート: 9000 (初期値)
-const oscService = new OscService('127.0.0.1', 9000)
+// OSCサービスのインスタンス化 (複数ターゲット)
+// App1: Port 9000
+const oscService1 = new OscService('127.0.0.1', 9000)
+// App2: Port 10000
+const oscService2 = new OscService('127.0.0.1', 10000)
 
 // WebSocketサービスのインスタンス化
 // ポート: 8080 (初期値)
@@ -18,10 +20,23 @@ const wsService = new WebSocketService(8080)
 // WebSocketService側でバリデーション済みのメッセージを受け取る
 wsService.onMessage(async (data) => {
   try {
-    // 受信したデータをそのままOSCとして転送
-    await oscService.send(data.address, ...data.args)
+    const { address, args } = data
+
+    if (address.startsWith('/app1')) {
+      // /app1... -> App1 (Port 9000) へ送信
+      console.log(`[Bridge] App1へ転送: ${address}`)
+      await oscService1.send(address, ...args)
+    } else if (address.startsWith('/app2')) {
+      // /app2... -> App2 (Port 10000) へ送信
+      console.log(`[Bridge] App2へ転送: ${address}`)
+      await oscService2.send(address, ...args)
+    } else {
+      // デフォルト: App1へ送信 (またはログ出力のみにするか要検討)
+      console.log(`[Bridge] デフォルト(App1)へ転送: ${address}`)
+      await oscService1.send(address, ...args)
+    }
   } catch (error) {
-    console.error('OSC転送エラー:', error)
+    console.error('[Bridge] OSC転送エラー:', error)
   }
 })
 
@@ -73,20 +88,29 @@ function createWindow(): void {
 // --- IPCハンドラー設定 ---
 
 // IPCハンドラー登録：OSCメッセージ送信
-ipcMain.handle('osc:send', async (_event, address: string, ...args: (string | number)[]) => {
+ipcMain.handle('osc:send', async (_event, address: string, args: (string | number)[], target: 'app1' | 'app2' = 'app1') => {
   try {
-    await oscService.send(address, ...args)
-    return { success: true, address, args }
+    // ターゲットに応じて送信サービスを切り替え
+    if (target === 'app2') {
+      await oscService2.send(address, ...args)
+    } else {
+      await oscService1.send(address, ...args)
+    }
+    return { success: true, address, args, target }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
 })
 
 // IPCハンドラー登録：OSC送信ポート変更
-ipcMain.handle('osc:set-port', (_event, port: number) => {
+ipcMain.handle('osc:set-port', (_event, port: number, target: 'app1' | 'app2') => {
   try {
-    oscService.setPort(port)
-    return { success: true, port }
+    if (target === 'app2') {
+      oscService2.setPort(port)
+    } else {
+      oscService1.setPort(port)
+    }
+    return { success: true, port, target }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
@@ -109,10 +133,8 @@ app.whenReady().then(() => {
   createWindow()
 
   // macOS: ドックアイコンクリック時にウィンドウがなければ再作成
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
-    }
+  app.on('activate', function () {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
 
@@ -125,5 +147,7 @@ app.on('window-all-closed', () => {
 
 // アプリ終了時にOSCサービスを終了
 app.on('will-quit', () => {
-  oscService.close()
+  oscService1.close()
+  oscService2.close()
 })
+
