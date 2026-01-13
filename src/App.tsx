@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 
 function App(): ReactElement {
   return (
-    <BrowserRouter basename="/game">
+    <BrowserRouter>
       <main>
         <Routes>
           <Route path="/" element={<h1>App</h1>} />
