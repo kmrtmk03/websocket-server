@@ -11,8 +11,8 @@ function HomePage(): ReactElement {
     try {
       // Electronが利用可能かチェック
       if (window.electronAPI) {
-        // TouchDesignerでチャンネルとして認識させるために値 1 を送信
-        const result = await window.electronAPI.sendOsc(`/scene/${sceneNumber}`, 1)
+        // /scene アドレスにシーン番号を送信
+        const result = await window.electronAPI.sendOsc('/scene', sceneNumber)
         console.log('OSC送信結果:', result)
       } else {
         console.warn('Electron APIが利用できません（ブラウザモード）')
@@ -40,8 +40,9 @@ function HomePage(): ReactElement {
       </div>
 
       <p className="info">
-        送信先: localhost:9000<br />
-        メッセージ形式: /scene/[番号]
+        送信先: 127.0.0.1:9000<br />
+        メッセージ形式: /scene <br />
+        値: [番号]
       </p>
     </div>
   )
