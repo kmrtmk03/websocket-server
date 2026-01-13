@@ -4,6 +4,8 @@ import { is } from '@electron-toolkit/utils'
 import { OscService } from './services/OscService'
 import { WebSocketService } from './services/WebSocketService'
 
+// --- サービス初期化 ---
+
 // OSCサービスのインスタンス化
 // ホスト: 127.0.0.1, ポート: 9000 (初期値)
 const oscService = new OscService('127.0.0.1', 9000)
@@ -12,22 +14,21 @@ const oscService = new OscService('127.0.0.1', 9000)
 // ポート: 8080 (初期値)
 const wsService = new WebSocketService(8080)
 
-// メインウィンドウの参照を保持
-let mainWindow: BrowserWindow | null = null
-
-// WebSocketからのメッセージ受信ハンドラ
-wsService.onMessage(async (data: any) => {
-  // フォーマット: { address: "/scene", args: [1] }
-  if (data && data.address && Array.isArray(data.args)) {
-    try {
-      await oscService.send(data.address, ...data.args)
-    } catch (error) {
-      console.error('OSC転送エラー:', error)
-    }
-  } else {
-    console.warn('無効なメッセージ形式:', data)
+// --- ブリッジロジック (WebSocket -> OSC) ---
+// WebSocketService側でバリデーション済みのメッセージを受け取る
+wsService.onMessage(async (data) => {
+  try {
+    // 受信したデータをそのままOSCとして転送
+    await oscService.send(data.address, ...data.args)
+  } catch (error) {
+    console.error('OSC転送エラー:', error)
   }
 })
+
+// --- アプリケーションライフサイクル ---
+
+// メインウィンドウの参照を保持
+let mainWindow: BrowserWindow | null = null
 
 /**
  * メインウィンドウを作成する
@@ -44,10 +45,10 @@ function createWindow(): void {
     },
   })
 
-  // WebSocketサービスにウィンドウをセット（ログ送信のため）
+  // WebSocketサービスにウィンドウをセット（レンダラーへのログ送信のため）
   wsService.setMainWindow(mainWindow)
 
-  // サーバー起動
+  // サーバー起動（再起動耐性あり）
   wsService.start()
 
   // ウィンドウの準備が完了したら表示
@@ -69,35 +70,39 @@ function createWindow(): void {
   }
 }
 
+// --- IPCハンドラー設定 ---
+
 // IPCハンドラー登録：OSCメッセージ送信
 ipcMain.handle('osc:send', async (_event, address: string, ...args: (string | number)[]) => {
   try {
     await oscService.send(address, ...args)
     return { success: true, address, args }
   } catch (error) {
-    return { success: false, error }
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
 })
 
-// IPCハンドラー登録：ポート番号変更
+// IPCハンドラー登録：OSC送信ポート変更
 ipcMain.handle('osc:set-port', (_event, port: number) => {
   try {
     oscService.setPort(port)
     return { success: true, port }
   } catch (error) {
-    return { success: false, error }
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
 })
 
-// IPCハンドラー登録：WebSocketサーバー設定変更
+// IPCハンドラー登録：WebSocket受信ポート変更
 ipcMain.handle('ws:set-port', (_event, port: number) => {
   try {
     wsService.start(port)
     return { success: true, port }
   } catch (error) {
-    return { success: false, error }
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
 })
+
+// --- アプリ初期化 ---
 
 // アプリケーションの初期化が完了したらウィンドウを作成
 app.whenReady().then(() => {

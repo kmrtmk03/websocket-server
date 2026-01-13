@@ -2,14 +2,27 @@ import { WebSocketServer } from 'ws'
 import { BrowserWindow } from 'electron'
 
 /**
+ * WebSocket経由で受信するOSC転送用メッセージのインターフェース
+ */
+interface OscTransferMessage {
+  address: string
+  args: (string | number)[]
+}
+
+/**
  * WebSocketサーバーを管理するサービスクラス
- * メインプロセスで使用され、WebSocketメッセージの受信とレンダラーへのログ送信を担当します。
+ * 
+ * 役割:
+ * 1. ローカルWebSocketサーバーの起動・停止
+ * 2. 外部アプリからのJSONメッセージ受信
+ * 3. メインプロセスへのコールバック通知 (OSC転送用)
+ * 4. レンダラープロセスへのログ送信
  */
 export class WebSocketService {
   private wss: WebSocketServer | null = null
   private port: number
   private mainWindow: BrowserWindow | null = null
-  private onMessageCallback: ((message: unknown) => void) | null = null
+  private onMessageCallback: ((message: OscTransferMessage) => void) | null = null
 
   /**
    * コンストラクタ
@@ -20,7 +33,7 @@ export class WebSocketService {
   }
 
   /**
-   * メインウィンドウを設定します（ログ送信のため）
+   * ログ送信先のメインウィンドウを設定します
    * @param window BrowserWindowのインスタンス
    */
   public setMainWindow(window: BrowserWindow): void {
@@ -28,15 +41,16 @@ export class WebSocketService {
   }
 
   /**
-   * メッセージ受信時のコールバックを設定します
-   * @param callback コールバック関数
+   * 有効なメッセージを受信した際のコールバックを登録します
+   * @param callback OSC転送用メッセージを受け取る関数
    */
-  public onMessage(callback: (message: unknown) => void): void {
+  public onMessage(callback: (message: OscTransferMessage) => void): void {
     this.onMessageCallback = callback
   }
 
   /**
    * WebSocketサーバーを起動します
+   * 既に起動している場合は再起動します
    * @param port ポート番号（指定がなければ現在の設定を使用）
    */
   public start(port?: number): void {
@@ -50,55 +64,62 @@ export class WebSocketService {
 
     try {
       this.wss = new WebSocketServer({ port: this.port })
-      console.log(`WebSocketサーバー起動: port ${this.port}`)
+      console.log(`[WebSocket] サーバー起動: port ${this.port}`)
       this.log(`サーバー起動: port ${this.port}`)
 
       this.wss.on('connection', (ws) => {
-        console.log('クライアント接続')
+        console.log('[WebSocket] クライアント接続')
         this.log('クライアント接続')
 
         ws.on('message', (data) => {
           try {
-            const message = data.toString()
-            console.log('受信メッセージ:', message)
-            this.log(`受信: ${message}`)
+            const messageStr = data.toString()
+            console.log('[WebSocket] 受信:', messageStr)
+            this.log(`受信: ${messageStr}`)
 
-            // JSONパースを試みる
+            // JSONパースとバリデーション
             try {
-              const json = JSON.parse(message)
+              const json = JSON.parse(messageStr) as OscTransferMessage
 
-              // コールバックを呼び出し
-              if (this.onMessageCallback) {
-                this.onMessageCallback(json)
+              // 必須フィールドのチェック
+              if (json && typeof json.address === 'string' && Array.isArray(json.args)) {
+                // コールバックを呼び出し (OSC送信へ)
+                if (this.onMessageCallback) {
+                  this.onMessageCallback(json)
+                }
+              } else {
+                const errorMsg = '無効なフォーマット: { address: string, args: [] } が必要です'
+                console.warn(`[WebSocket] ${errorMsg}`)
+                this.log(`警告: ${errorMsg}`)
               }
             } catch (e) {
-              console.warn('JSONパースエラー:', e)
+              console.warn('[WebSocket] JSONパースエラー:', e)
               this.log(`警告: 無効なJSONフォーマット`)
             }
 
           } catch (error) {
-            console.error('メッセージ処理エラー:', error)
+            console.error('[WebSocket] メッセージ処理エラー:', error)
           }
         })
 
         ws.on('close', () => {
-          console.log('クライアント切断')
+          console.log('[WebSocket] クライアント切断')
           this.log('クライアント切断')
         })
 
         ws.on('error', (error) => {
-          console.error('WebSocketエラー:', error)
+          console.error('[WebSocket] エラー:', error)
           this.log(`エラー: ${error.message}`)
         })
       })
 
       this.wss.on('error', (error) => {
-        console.error('サーバーエラー:', error)
+        console.error('[WebSocket] サーバーエラー:', error)
         this.log(`サーバーエラー: ${error.message}`)
       })
 
     } catch (error) {
-      console.error('WebSocketサーバー起動失敗:', error)
+      console.error('[WebSocket] 起動失敗:', error)
       this.log(`起動失敗: ${error}`)
     }
   }
@@ -110,17 +131,19 @@ export class WebSocketService {
     if (this.wss) {
       this.wss.close()
       this.wss = null
-      console.log('WebSocketサーバー停止')
+      console.log('[WebSocket] サーバー停止')
       this.log('サーバー停止')
     }
   }
 
   /**
    * レンダラープロセスにログを送信します
+   * ウィンドウが破棄されている場合は送信しません
    * @param message ログメッセージ
    */
   private log(message: string): void {
-    if (this.mainWindow) {
+    // ウィンドウが存在し、かつ破棄されていない場合のみ送信
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.webContents.send('ws:log', message)
     }
   }

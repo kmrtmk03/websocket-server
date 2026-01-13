@@ -5,9 +5,13 @@ import './HomePage.sass'
 
 /**
  * ホームページコンポーネント
- * OSC送信ボタンとWebSocketサーバー設定を表示
+ * 
+ * 構成:
+ * 1. OSC Sender セクション: ボタンによる手動OSC送信とポート設定
+ * 2. WebSocket Server セクション: サーバーポート設定と受信ログ表示
  */
 function HomePage(): ReactElement {
+  // カスタムフックを使用してロジックを分離
   const { port, setPort, handlePortChange, sendOsc } = useOscControl()
   const { wsPort, setWsPort, handleWsPortChange, logs, clearLogs } = useWebSocketServer()
 
