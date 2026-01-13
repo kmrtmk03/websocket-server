@@ -38,7 +38,7 @@ function createWindow(): void {
     show: false, // 準備完了まで非表示
     autoHideMenuBar: true, // メニューバーを自動的に隠す
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      preload: join(__dirname, '../preload/index.cjs'),
       sandbox: false, // プリロードスクリプトでNode.js APIを使用可能にする
     },
   })

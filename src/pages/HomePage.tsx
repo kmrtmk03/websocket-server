@@ -11,7 +11,8 @@ function HomePage(): ReactElement {
     try {
       // Electronが利用可能かチェック
       if (window.electronAPI) {
-        const result = await window.electronAPI.sendOsc(`/scene/${sceneNumber}`)
+        // TouchDesignerでチャンネルとして認識させるために値 1 を送信
+        const result = await window.electronAPI.sendOsc(`/scene/${sceneNumber}`, 1)
         console.log('OSC送信結果:', result)
       } else {
         console.warn('Electron APIが利用できません（ブラウザモード）')

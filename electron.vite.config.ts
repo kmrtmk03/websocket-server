@@ -10,6 +10,12 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     build: {
       outDir: 'dist-electron/main',
+      rollupOptions: {
+        output: {
+          format: 'cjs',
+          entryFileNames: '[name].cjs',
+        },
+      },
     },
   },
 
@@ -21,7 +27,7 @@ export default defineConfig({
       rollupOptions: {
         output: {
           format: 'cjs',
-          entryFileNames: '[name].js',
+          entryFileNames: '[name].cjs',
         },
       },
     },
