@@ -1,9 +1,32 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
+import { Client as OscClient } from 'node-osc'
+
+// OSC設定
+const OSC_HOST = '127.0.0.1'
+const OSC_PORT = 9000
+
+// OSCクライアントを作成
+const oscClient = new OscClient(OSC_HOST, OSC_PORT)
 
 // メインウィンドウの参照を保持
 let mainWindow: BrowserWindow | null = null
+
+/**
+ * OSCメッセージを送信する
+ * @param address OSCアドレス（例: /scene/1）
+ * @param args 送信する引数（オプション）
+ */
+function sendOscMessage(address: string, ...args: (string | number)[]): void {
+  oscClient.send(address, ...args, (err: Error | null) => {
+    if (err) {
+      console.error('OSC送信エラー:', err)
+    } else {
+      console.log(`OSC送信成功: ${address}`, args)
+    }
+  })
+}
 
 /**
  * メインウィンドウを作成する
@@ -39,6 +62,12 @@ function createWindow(): void {
   }
 }
 
+// IPCハンドラー: OSCメッセージ送信
+ipcMain.handle('osc:send', (_event, address: string, ...args: (string | number)[]) => {
+  sendOscMessage(address, ...args)
+  return { success: true, address, args }
+})
+
 // アプリケーションの初期化が完了したらウィンドウを作成
 app.whenReady().then(() => {
   createWindow()
@@ -56,4 +85,9 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+// アプリ終了時にOSCクライアントをクローズ
+app.on('will-quit', () => {
+  oscClient.close()
 })
