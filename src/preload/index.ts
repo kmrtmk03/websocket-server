@@ -16,6 +16,11 @@ const electronAPI = {
   sendOsc: (address: string, ...args: (string | number)[]) => {
     return ipcRenderer.invoke('osc:send', address, ...args)
   },
+
+  // OSCポートを変更
+  setPort: (port: number) => {
+    return ipcRenderer.invoke('osc:set-port', port)
+  },
 }
 
 // contextBridgeを使ってレンダラーに安全にAPIを公開

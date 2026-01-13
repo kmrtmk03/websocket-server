@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { useState, type ReactElement } from 'react'
 import './HomePage.sass'
 
 /**
@@ -6,6 +6,16 @@ import './HomePage.sass'
  * OSC送信ボタンを表示
  */
 function HomePage(): ReactElement {
+  const [port, setPort] = useState(9000)
+
+  // ポート番号を変更する
+  const handlePortChange = async (): Promise<void> => {
+    if (window.electronAPI) {
+      const result = await window.electronAPI.setPort(port)
+      console.log('ポート変更結果:', result)
+    }
+  }
+
   // OSCメッセージを送信する
   const handleSendOsc = async (sceneNumber: number): Promise<void> => {
     try {
@@ -39,8 +49,21 @@ function HomePage(): ReactElement {
         ))}
       </div>
 
+      <div className="port-settings">
+        <label>
+          Port:
+          <input
+            type="number"
+            value={port}
+            onChange={(e) => setPort(Number(e.target.value))}
+            onBlur={handlePortChange}
+            onKeyDown={(e) => e.key === 'Enter' && handlePortChange()}
+          />
+        </label>
+      </div>
+
       <p className="info">
-        送信先: 127.0.0.1:9000<br />
+        送信先: 127.0.0.1:{port}<br />
         メッセージ形式: /scene <br />
         値: [番号]
       </p>

@@ -18,6 +18,13 @@ export interface ElectronAPI {
     address: string
     args: (string | number)[]
   }>
+
+  // OSCポートを変更
+  setPort: (port: number) => Promise<{
+    success: boolean
+    port?: number
+    error?: unknown
+  }>
 }
 
 // グローバルwindowオブジェクトにelectronAPIを追加

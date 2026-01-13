@@ -5,10 +5,10 @@ import { Client as OscClient } from 'node-osc'
 
 // OSC設定
 const OSC_HOST = '127.0.0.1'
-const OSC_PORT = 9000
+let oscPort = 9000
 
 // OSCクライアントを作成
-const oscClient = new OscClient(OSC_HOST, OSC_PORT)
+let oscClient = new OscClient(OSC_HOST, oscPort)
 
 // メインウィンドウの参照を保持
 let mainWindow: BrowserWindow | null = null
@@ -66,6 +66,26 @@ function createWindow(): void {
 ipcMain.handle('osc:send', (_event, address: string, ...args: (string | number)[]) => {
   sendOscMessage(address, ...args)
   return { success: true, address, args }
+})
+
+// IPCハンドラー: ポート番号変更
+ipcMain.handle('osc:set-port', (_event, port: number) => {
+  if (port === oscPort) return { success: true, port }
+
+  try {
+    // 古いクライアントを閉じる
+    oscClient.close()
+
+    // 新しいポートで再作成
+    oscPort = port
+    oscClient = new OscClient(OSC_HOST, oscPort)
+
+    console.log(`OSCポートを変更しました: ${port}`)
+    return { success: true, port }
+  } catch (error) {
+    console.error('OSCポート変更エラー:', error)
+    return { success: false, error }
+  }
 })
 
 // アプリケーションの初期化が完了したらウィンドウを作成
