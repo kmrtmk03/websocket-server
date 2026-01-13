@@ -21,6 +21,16 @@ const electronAPI = {
   setPort: (port: number) => {
     return ipcRenderer.invoke('osc:set-port', port)
   },
+
+  // WebSocketポートを変更
+  setWsPort: (port: number) => {
+    return ipcRenderer.invoke('ws:set-port', port)
+  },
+
+  // WebSocketログを受信
+  onWsLog: (callback: (message: string) => void) => {
+    ipcRenderer.on('ws:log', (_event, message) => callback(message))
+  },
 }
 
 // contextBridgeを使ってレンダラーに安全にAPIを公開

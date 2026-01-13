@@ -2,13 +2,32 @@ import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { OscService } from './services/OscService'
+import { WebSocketService } from './services/WebSocketService'
 
 // OSCサービスのインスタンス化
 // ホスト: 127.0.0.1, ポート: 9000 (初期値)
 const oscService = new OscService('127.0.0.1', 9000)
 
+// WebSocketサービスのインスタンス化
+// ポート: 8080 (初期値)
+const wsService = new WebSocketService(8080)
+
 // メインウィンドウの参照を保持
 let mainWindow: BrowserWindow | null = null
+
+// WebSocketからのメッセージ受信ハンドラ
+wsService.onMessage(async (data: any) => {
+  // フォーマット: { address: "/scene", args: [1] }
+  if (data && data.address && Array.isArray(data.args)) {
+    try {
+      await oscService.send(data.address, ...data.args)
+    } catch (error) {
+      console.error('OSC転送エラー:', error)
+    }
+  } else {
+    console.warn('無効なメッセージ形式:', data)
+  }
+})
 
 /**
  * メインウィンドウを作成する
@@ -24,6 +43,12 @@ function createWindow(): void {
       sandbox: false, // プリロードスクリプトでNode.js APIを使用可能にする
     },
   })
+
+  // WebSocketサービスにウィンドウをセット（ログ送信のため）
+  wsService.setMainWindow(mainWindow)
+
+  // サーバー起動
+  wsService.start()
 
   // ウィンドウの準備が完了したら表示
   mainWindow.on('ready-to-show', () => {
@@ -58,6 +83,16 @@ ipcMain.handle('osc:send', async (_event, address: string, ...args: (string | nu
 ipcMain.handle('osc:set-port', (_event, port: number) => {
   try {
     oscService.setPort(port)
+    return { success: true, port }
+  } catch (error) {
+    return { success: false, error }
+  }
+})
+
+// IPCハンドラー登録：WebSocketサーバー設定変更
+ipcMain.handle('ws:set-port', (_event, port: number) => {
+  try {
+    wsService.start(port)
     return { success: true, port }
   } catch (error) {
     return { success: false, error }

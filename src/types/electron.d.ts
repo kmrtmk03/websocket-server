@@ -25,6 +25,16 @@ export interface ElectronAPI {
     port?: number
     error?: unknown
   }>
+
+  // WebSocketポートを変更
+  setWsPort: (port: number) => Promise<{
+    success: boolean
+    port?: number
+    error?: unknown
+  }>
+
+  // WebSocketログを受信
+  onWsLog: (callback: (message: string) => void) => void
 }
 
 // グローバルwindowオブジェクトにelectronAPIを追加
