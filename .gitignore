@@ -27,3 +27,6 @@ out
 
 # Antigravity
 .gemini/
+
+# SSL証明書（秘密鍵を含むため）
+certs/

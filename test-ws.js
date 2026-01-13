@@ -1,10 +1,12 @@
-import { WebSocket } from 'ws';
+import { WebSocket } from 'ws'
 
-// WebSocketサーバーに接続
-const ws = new WebSocket('ws://localhost:8080');
+// WSSサーバーに接続（自己署名証明書を許可）
+const ws = new WebSocket('wss://localhost:8080', {
+  rejectUnauthorized: false  // 自己署名証明書を許可（開発用）
+})
 
 ws.on('open', function open() {
-  console.log('✅ WebSocketサーバーに接続しました');
+  console.log('✅ WSSサーバーに接続しました')
 
   // App1向けテスト用メッセージ
   const message1 = {

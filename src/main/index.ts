@@ -212,6 +212,22 @@ ipcMain.handle('ws:set-port', (_event, port: number) => {
 
 // --- アプリ初期化 ---
 
+/**
+ * 開発時のみ: ローカルホストへの自己署名証明書エラーを無視
+ * これによりレンダラープロセスからWSSサーバーへの接続が可能になります
+ * 
+ * 注意: 本番環境では適切な証明書を使用することを推奨
+ */
+app.on('certificate-error', (event, _webContents, url, _error, _certificate, callback) => {
+  // ローカルホスト（開発環境）の場合のみ証明書エラーを無視
+  if (url.startsWith('wss://localhost') || url.startsWith('https://localhost')) {
+    event.preventDefault()
+    callback(true)  // 証明書を信頼する
+  } else {
+    callback(false)  // その他のURLは通常のセキュリティチェックを行う
+  }
+})
+
 // アプリケーションの初期化が完了したらウィンドウを作成
 app.whenReady().then(() => {
   createWindow()
